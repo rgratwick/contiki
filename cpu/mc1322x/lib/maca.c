@@ -670,6 +670,7 @@ void maca_isr(void) {
 	}
 	if (filter_failed_irq()) {
 		PRINTF("maca filter failed\n\r");
+		printf("maca filter failed\n\r");
 		ResumeMACASync();
 		*MACA_CLRIRQ = (1 << maca_irq_flt);
 	}
