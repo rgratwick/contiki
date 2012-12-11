@@ -59,41 +59,23 @@ SENSORS(&button_sensor);
 #endif
 
 void
-main_loop_sleep(void)
+sleep_10sec(void)
 {
-    printf("Sleep 10sec\n");
-    //while(*UART1_UTXCON != 32);
     /* This *must* turn off the maca or hangs will occur */
-    maca_off();
-//    adc_disable();
-    extern void arch_sleep(void);
-   //*CRM_WU_CNTL &= ~0x1; /* disable wakeup from wakeup timer */
+    NETSTACK_MAC.off(0);
+    PRINTF("Sleep triggered.. wake up in ~10secs time=%u\n",clock_seconds());
 
    *CRM_WU_CNTL |= 0x1; /* enable wakeup from wakeup timer */
-   *CRM_WU_TIMEOUT = (1310720/4); //~13secs
+   *CRM_WU_TIMEOUT = 327680; //~10secs
 
     while(GPIO->DATA.GPIO_27) {}; /* debounce the wakeup button */
 
-    *CRM_SLEEP_CNTL = 0x71; /* hibernate, all RAM pages, retain state, don't power GPIO */ /* approx. 2kHz = 16.1uA */
-   	/* wait for the sleep cycle to complete */
-	while((*CRM_STATUS & 0x1) == 0) { continue; }
-	/* write 1 to sleep_sync --- this clears the bit (it's a r1wc bit) and powers down */
-	*CRM_STATUS = 1;
+    sleep(0x70,0x1); /* hibernate, all RAM pages, retain state, don't power GPIO */ /* approx. 2kHz = 16.1uA */
 
-	/* asleep */
-
-	/* wait for the awake cycle to complete */
-	while((*CRM_STATUS & 0x1) == 0) { continue; }
-	/* write 1 to sleep_sync --- this clears the bit (it's a r1wc bit) and finishes wakeup */
-	*CRM_STATUS |= 1;
-
-   // arch_sleep();
-    printf("Wake\n");
+    PRINTF("Wake-up time=%u\n",clock_seconds());
    // *CRM_WU_CNTL |= 0x1; /* enable wakeup from wakeup timer */
-//    adc_init();
-    maca_on();
+    NETSTACK_MAC.on();
 }
-
 
 int main(void) {
 
@@ -185,18 +167,11 @@ int main(void) {
 		for(i=0;i<1000000;i++) {GPIO->DATA_SET.GPIO_44 = 1;GPIO->DATA_SET.GPIO_45 = 1;if(!GPIO->DATA.GPIO_26) break;}
 		GPIO->DATA_RESET.GPIO_44 = 1;GPIO->DATA_RESET.GPIO_45 = 1;
 		if(i<1000000) { //short press
-			printf("short press maca_entry=%lu\n",maca_entry);
+			PRINTF("short press maca_entry=%lu\n",maca_entry);
 		} else {        //long press
 			if(GPIO->DATA.GPIO_27) { //sleep if both buttons pressed
-
-				printf("both pressed\n");
-			    //PRINTF("Sleep...\n\r");
-			   // maca_off();
-			  // rtimer_arch_sleep(200000);//~8 secs
-				main_loop_sleep();
-			//	goto idle;
-			  // maca_on();
-			 //  PRINTF("Awake\n\r");
+				PRINTF("both buttons pressed\n");
+				sleep_10sec();
 			}
 			while (GPIO->DATA.GPIO_26) {};
 		}

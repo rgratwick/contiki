@@ -35,6 +35,8 @@
 
 #include "mc1322x.h"
 
+#include "contiki-conf.h"
+
 #define CRM_DEBUG 1
 #if CRM_DEBUG
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -43,13 +45,16 @@
 #endif
 
 uint32_t cal_rtc_secs;      /* calibrated 2khz rtc seconds */
+static uint32_t rtc_clock_sample; /* to know when sleep started */
 
 void sleep(uint32_t opts, uint32_t mode)
 {
+	uint32_t rtc_delta=0;
 
 	/* the maca must be off before going to sleep */
 	/* otherwise the mcu will reboot on wakeup */
 //	maca_off();
+	rtc_clock_sample=*CRM_RTC_COUNT;
 	*CRM_SLEEP_CNTL = opts;
 	*CRM_SLEEP_CNTL = (opts | mode);
 
@@ -64,8 +69,13 @@ void sleep(uint32_t opts, uint32_t mode)
 
 	/* waking up */
 	while(!bit_is_set(*CRM_STATUS,0)) { continue; }
-        /* write 1 to sleep_sync --- this clears the bit (it's a r1wc bit) and finishes the wakeup */
+    /* write 1 to sleep_sync --- this clears the bit (it's a r1wc bit) and finishes the wakeup */
 	set_bit(*CRM_STATUS,0);
+
+	/* Adjust clock.c for the time spent sleeping */
+	rtc_delta=*CRM_RTC_COUNT-rtc_clock_sample;
+	PRINTF("rtc_delta=%ul rtc_freq=%ul\n",rtc_delta,rtc_freq);
+	clock_adjust_ticks((rtc_delta*CLOCK_CONF_SECOND)/rtc_freq);
 
 	/* you may also need to do other recovery */
 	/* such as interrupt handling */

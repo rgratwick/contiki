@@ -149,6 +149,8 @@ void rtc_setup(void) {
 		PRINTF("RTC calibrated to %d Hz\r\n", rtc_freq);
 	} else {
 		PRINTF("32kHz xtal started\n\r");
+	   /* RTC has started up */
+		rtc_freq = 32768; /*TODO better way to set this? */
 	}
 }
 
